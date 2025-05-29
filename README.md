@@ -40,8 +40,8 @@ from inworld_sdk import InworldAIClient
 client = InworldAIClient(api_key="<YOUR_API_KEY>")
 
 # Example: Get voices
-response = client.tts.voices()
-print(response.text)
+voices = client.tts.voices()
+print(voices)
 ```
 
 ## Contributing
