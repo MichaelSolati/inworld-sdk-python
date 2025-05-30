@@ -34,14 +34,30 @@ pip install -e ".[dev]"
 ## Basic Usage
 
 ```python
+import asyncio
+
+import simpleaudio as sa
+
 from inworld_sdk import InworldAIClient
 
-# Initialize the client
-client = InworldAIClient(api_key="<YOUR_API_KEY>")
 
-# Example: Get voices
-voices = client.tts.voices()
-print(voices)
+async def main():
+  # Initialize the client
+  client = InworldAIClient(api_key="<YOUR_API_KEY>")
+
+  # Example: Get voices
+  voices = await client.tts.voices()
+  print(voices)
+
+  # Example: Synthesize and play speech
+  text = "Hello! This is a test of the Inworld AI TTS system."
+  sync_buffer = await client.tts.synthesizeSpeechAsWav(text)
+  play_obj = sa.WaveObject.from_wave_file(sync_buffer)
+  play_obj.play().wait_done()
+
+
+if __name__ == "__main__":
+  asyncio.run(main())
 ```
 
 ## Contributing
