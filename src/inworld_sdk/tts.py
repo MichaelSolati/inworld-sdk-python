@@ -1,9 +1,7 @@
 import base64
 import io
 import json
-from typing import Generator, Optional
-
-import requests
+from typing import AsyncGenerator, Optional
 
 from .http_client import HttpClient
 from .typings.tts import AudioConfig
@@ -70,7 +68,7 @@ class TTS:
         """Set default voice"""
         self.__voice = voice
 
-    def synthesizeSpeech(
+    async def synthesizeSpeech(
         self,
         input: str,
         voice: Optional[TTSVoices] = None,
@@ -93,13 +91,13 @@ class TTS:
         if modelId or self.__modelId:
             data["modelId"] = modelId or self.__modelId
 
-        return self.__client.request(
+        return await self.__client.request(
             "post",
             "/tts/v1alpha/text:synthesize-sync",
             data=data,
         )
 
-    def synthesizeSpeechAsWav(
+    async def synthesizeSpeechAsWav(
         self,
         input: str,
         voice: Optional[TTSVoices] = None,
@@ -111,7 +109,7 @@ class TTS:
         if audioConfig is not None:
             audioConfig["audioEncoding"] = "AUDIO_ENCODING_UNSPECIFIED"
 
-        response = self.synthesizeSpeech(
+        response = await self.synthesizeSpeech(
             input=input,
             voice=voice,
             languageCode=languageCode,
@@ -119,18 +117,18 @@ class TTS:
             audioConfig=audioConfig,
         )
 
-        decoded_audio_bytes = base64.b64decode(response.get("audioContent"))
+        decoded_audio = base64.b64decode(response.get("audioContent"))
 
-        return io.BytesIO(decoded_audio_bytes)
+        return io.BytesIO(decoded_audio)
 
-    def synthesizeSpeechStream(
+    async def synthesizeSpeechStream(
         self,
         input: str,
         voice: Optional[TTSVoices] = None,
         languageCode: Optional[TTSLanguageCodes] = None,
         modelId: Optional[str] = None,
         audioConfig: Optional[AudioConfig] = None,
-    ) -> requests.Response:
+    ) -> AsyncGenerator[dict, None]:
         """Synthesize speech as a stream"""
         data = {
             "input": {"text": input},
@@ -146,48 +144,53 @@ class TTS:
         if modelId or self.__modelId:
             data["modelId"] = modelId or self.__modelId
 
-        return self.__client.stream(
-            "post",
-            "/tts/v1alpha/text:synthesize",
-            data=data,
-        )
+        response = None
+        try:
+            response = await self.__client.request(
+                "post",
+                "/tts/v1alpha/text:synthesize",
+                data=data,
+                stream=True,
+            )
 
-    def synthesizeSpeechStreamAsWav(
+            async for chunk in response.content:
+                if chunk:
+                    chunk_data = json.loads(chunk)
+                    if isinstance(chunk_data, dict) and chunk_data.get("result"):
+                        yield chunk_data["result"]
+        except Exception:
+            raise
+        finally:
+            if response is not None:
+                await response.close()
+
+    async def synthesizeSpeechStreamAsWav(
         self,
         input: str,
         modelId: Optional[str] = None,
         voice: Optional[TTSVoices] = None,
         languageCode: Optional[TTSLanguageCodes] = None,
         audioConfig: Optional[AudioConfig] = None,
-    ) -> Generator[bytes, None, io.BytesIO]:
+    ) -> AsyncGenerator[io.BytesIO, None]:
         """Synthesize speech as WAV response from streamed data"""
         if audioConfig is not None:
             audioConfig["audioEncoding"] = "AUDIO_ENCODING_UNSPECIFIED"
 
-        response = self.synthesizeSpeechStream(
-            input=input,
-            modelId=modelId,
-            voice=voice,
-            languageCode=languageCode,
-            audioConfig=audioConfig,
-        )
+        try:
+            async for chunk in self.synthesizeSpeechStream(
+                input=input,
+                modelId=modelId,
+                voice=voice,
+                languageCode=languageCode,
+                audioConfig=audioConfig,
+            ):
+                if chunk and chunk.get("audioContent") is not None:
+                    decoded_audio = base64.b64decode(chunk.get("audioContent"))
+                    yield io.BytesIO(decoded_audio)
+        except Exception:
+            raise
 
-        audio_buffer = io.BytesIO()
-        for chunk in response.iter_lines():
-            if chunk:
-                try:
-                    chunk_data = json.loads(chunk)
-                    if "result" in chunk_data and "audioContent" in chunk_data["result"]:
-                        audio_data = base64.b64decode(chunk_data["result"]["audioContent"])
-                        audio_buffer.write(audio_data)
-                        yield audio_data
-                except json.JSONDecodeError:
-                    continue
-
-        audio_buffer.seek(0)
-        return audio_buffer
-
-    def voices(
+    async def voices(
         self,
         languageCode: Optional[TTSLanguageCodes] = None,
         modelId: Optional[str] = None,
@@ -199,5 +202,5 @@ class TTS:
         if modelId:
             data["modelId"] = modelId
 
-        response = self.__client.request("get", "/tts/v1alpha/voices", data=data)
+        response = await self.__client.request("get", "/tts/v1alpha/voices", data=data)
         return response.get("voices")

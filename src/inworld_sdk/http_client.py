@@ -1,8 +1,20 @@
 import json
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 from urllib.parse import urljoin
 
-import requests
+import aiohttp
+
+
+class ResponseWrapper:
+    def __init__(self, response: aiohttp.ClientResponse, session: aiohttp.ClientSession):
+        self._response = response
+        self._session = session
+
+    def __getattr__(self, name):
+        return getattr(self._response, name)
+
+    async def close(self):
+        await self._session.close()
 
 
 class HttpClient:
@@ -33,69 +45,68 @@ class HttpClient:
             "Authorization": f"{auth_prefix} {api_key}",
         }
 
-    def request(
+    async def request(
         self,
         method: str,
         path: str,
-        data: dict = {},
-    ) -> dict:
-        requestData = None
-        requestParams = None
-        requestUrl = urljoin(self.__base_url, path)
-
-        if method == "post":
-            requestData = json.dumps(data) if len(data.keys()) > 0 else ""
-        elif method == "get":
-            requestParams = data
-
-        response = requests.request(
-            method,
-            requestUrl,
-            data=requestData,
-            headers=self.__headers,
-            params=requestParams,
+        data: Optional[dict] = None,
+        stream: bool = False,
+    ) -> Union[dict | ResponseWrapper]:
+        requestData = (
+            json.dumps(data) if method != "get" and data and len(data.keys()) > 0 else None
         )
-
-        return self.__validateRequestResponse(response)
-
-    def stream(
-        self,
-        method: str,
-        path: str,
-        data: dict = {},
-    ) -> requests.Response:
-        requestData = None
-        requestParams = None
+        requestParams = data if method == "get" and data else None
         requestUrl = urljoin(self.__base_url, path)
-        session = requests.Session()
+        session = aiohttp.ClientSession()
 
-        if method == "post":
-            requestData = json.dumps(data) if len(data.keys()) > 0 else ""
-        elif method == "get":
-            requestParams = data
-
-        response = session.request(
-            method,
-            requestUrl,
-            data=requestData,
-            headers=self.__headers,
-            params=requestParams,
-            stream=True,
-        )
-
-        return self.__validateStreamResponse(response)
-
-    def __validateRequestResponse(self, response: requests.Response) -> dict:
-        self.__validateStreamResponse(response)
-        return response.json()
-
-    def __validateStreamResponse(self, response: requests.Response) -> requests.Response:
         try:
-            body = response.json()
+            response = await session.request(
+                method,
+                url=requestUrl,
+                json=requestParams,
+                data=requestData,
+                headers=self.__headers,
+                params=requestParams,
+            )
+
+            wrapped_response = ResponseWrapper(response, session)
+
+            if stream:
+                original_content = response.content
+
+                async def validating_stream():
+                    async for chunk in original_content:
+                        if chunk:
+                            try:
+                                yield await self.__validate(chunk)
+                            except Exception:
+                                raise
+
+                response.content = validating_stream()
+                return wrapped_response
+            else:
+                await self.__validate(wrapped_response)
+                return_item: dict = await wrapped_response.json()
+                await wrapped_response.close()
+                return return_item
+
+        except Exception:
+            await session.close()
+            raise
+
+    async def __validate(
+        self,
+        response: Union[ResponseWrapper, bytes],
+    ) -> Union[ResponseWrapper, bytes]:
+        try:
+            if isinstance(response, bytes):
+                body = json.loads(response)
+            else:
+                body = await response.json()
+            if body.get("error") is not None:
+                body = body["error"]
             if isinstance(body, dict) and body.get("code") is not None:
                 raise Exception(body.get("message"))
         except Exception:
-            pass
-            response.raise_for_status()
-
+            raise
         return response
