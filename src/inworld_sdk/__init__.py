@@ -8,10 +8,11 @@ from typing import Literal, Optional
 
 from .http_client import HttpClient
 from .tts import TTS
+from .typings.tts import TTSAudioEncoding
 from .typings.tts import TTSLanguageCodes
 from .typings.tts import TTSVoices
 
-__all__ = ["InworldAIClient", "TTSLanguageCodes", "TTSVoices"]
+__all__ = ["InworldAIClient", "TTSAudioEncoding", "TTSLanguageCodes", "TTSVoices"]
 
 
 class InworldAIClient:
