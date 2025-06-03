@@ -10,7 +10,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.9'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -21,3 +21,9 @@ jobs:
       run: isort . --check-only
     - name: Run Flake8
       run: flake8 .
+    - name: Trigger Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        gh workflow run release.yml --ref ${{ github.ref }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
