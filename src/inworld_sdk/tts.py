@@ -1,9 +1,10 @@
 import base64
 import io
 import json
-from typing import AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, cast, Dict, List, Optional
 
 from .http_client import HttpClient
+from .http_client import ResponseWrapper
 from .typings.tts import AudioConfig
 from .typings.tts import TTSLanguageCodes
 from .typings.tts import TTSVoices
@@ -29,7 +30,7 @@ class TTS:
         self.__voice = voice or "Emma"
 
     @property
-    def audioConfig(self) -> AudioConfig:
+    def audioConfig(self) -> Optional[AudioConfig]:
         """Get default audio config"""
         return self.__audioConfig
 
@@ -49,7 +50,7 @@ class TTS:
         self.__languageCode = languageCode
 
     @property
-    def modelId(self) -> str:
+    def modelId(self) -> Optional[str]:
         """Get default model ID"""
         return self.__modelId
 
@@ -75,7 +76,7 @@ class TTS:
         languageCode: Optional[TTSLanguageCodes] = None,
         modelId: Optional[str] = None,
         audioConfig: Optional[AudioConfig] = None,
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """Synthesize speech"""
         data = {
             "input": {"text": input},
@@ -91,11 +92,12 @@ class TTS:
         if modelId or self.__modelId:
             data["modelId"] = modelId or self.__modelId
 
-        return await self.__client.request(
+        response = await self.__client.request(
             "post",
             "/tts/v1alpha/text:synthesize-sync",
             data=data,
         )
+        return cast(Dict[str, Any], response)
 
     async def synthesizeSpeechAsWav(
         self,
@@ -117,7 +119,10 @@ class TTS:
             audioConfig=audioConfig,
         )
 
-        decoded_audio = base64.b64decode(response.get("audioContent"))
+        audio_content = response.get("audioContent")
+        if not audio_content:
+            raise ValueError("No audio content in response")
+        decoded_audio = base64.b64decode(audio_content)
 
         return io.BytesIO(decoded_audio)
 
@@ -128,7 +133,7 @@ class TTS:
         languageCode: Optional[TTSLanguageCodes] = None,
         modelId: Optional[str] = None,
         audioConfig: Optional[AudioConfig] = None,
-    ) -> AsyncGenerator[dict, None]:
+    ) -> AsyncGenerator[Dict[str, Any], None]:
         """Synthesize speech as a stream"""
         data = {
             "input": {"text": input},
@@ -144,13 +149,16 @@ class TTS:
         if modelId or self.__modelId:
             data["modelId"] = modelId or self.__modelId
 
-        response = None
+        response: Optional[ResponseWrapper] = None
         try:
-            response = await self.__client.request(
-                "post",
-                "/tts/v1alpha/text:synthesize",
-                data=data,
-                stream=True,
+            response = cast(
+                ResponseWrapper,
+                await self.__client.request(
+                    "post",
+                    "/tts/v1alpha/text:synthesize",
+                    data=data,
+                    stream=True,
+                ),
             )
 
             async for chunk in response.content:
@@ -184,8 +192,9 @@ class TTS:
                 languageCode=languageCode,
                 audioConfig=audioConfig,
             ):
-                if chunk and chunk.get("audioContent") is not None:
-                    decoded_audio = base64.b64decode(chunk.get("audioContent"))
+                audio_content = chunk.get("audioContent")
+                if audio_content is not None:
+                    decoded_audio = base64.b64decode(audio_content)
                     yield io.BytesIO(decoded_audio)
         except Exception:
             raise
@@ -194,13 +203,14 @@ class TTS:
         self,
         languageCode: Optional[TTSLanguageCodes] = None,
         modelId: Optional[str] = None,
-    ) -> list[VoiceResponse]:
+    ) -> List[VoiceResponse]:
         """Get voices"""
-        data = {}
+        data: Dict[str, Any] = {}
         if languageCode:
             data["languageCode"] = languageCode
         if modelId:
             data["modelId"] = modelId
 
         response = await self.__client.request("get", "/tts/v1alpha/voices", data=data)
-        return response.get("voices")
+        voices = response.get("voices", [])
+        return cast(List[VoiceResponse], voices)

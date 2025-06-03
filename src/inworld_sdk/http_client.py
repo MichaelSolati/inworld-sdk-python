@@ -51,7 +51,7 @@ class HttpClient:
         path: str,
         data: Optional[dict] = None,
         stream: bool = False,
-    ) -> Union[dict | ResponseWrapper]:
+    ) -> Union[dict, ResponseWrapper]:
         requestData = (
             json.dumps(data) if method != "get" and data and len(data.keys()) > 0 else None
         )
