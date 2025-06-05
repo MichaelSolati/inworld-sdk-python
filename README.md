@@ -38,12 +38,12 @@ import asyncio
 
 import simpleaudio as sa
 
-from inworld_sdk import InworldAIClient
+from inworld_sdk import InworldClient
 
 
 async def main():
   # Initialize the client
-  client = InworldAIClient(api_key="<YOUR_API_KEY>")
+  client = InworldClient(api_key="<YOUR_API_KEY>")
 
   # Example: Get voices
   voices = await client.tts.voices()

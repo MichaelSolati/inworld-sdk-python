@@ -12,10 +12,10 @@ from .typings.tts import TTSAudioEncoding
 from .typings.tts import TTSLanguageCodes
 from .typings.tts import TTSVoices
 
-__all__ = ["InworldAIClient", "TTSAudioEncoding", "TTSLanguageCodes", "TTSVoices"]
+__all__ = ["InworldClient", "TTSAudioEncoding", "TTSLanguageCodes", "TTSVoices"]
 
 
-class InworldAIClient:
+class InworldClient:
     """Client for interacting with Inworld AI's services."""
 
     def __init__(
