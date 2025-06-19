@@ -28,7 +28,7 @@ python -m venv venv
 source venv/bin/activate  # On Windows, use: .\venv\Scripts\activate
 
 # Install the package in development mode with all dependencies
-pip install -e ".[dev]"
+pip install -e .
 ```
 
 ## Basic Usage

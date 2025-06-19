@@ -1,8 +1,7 @@
 import json
 from typing import Any, AsyncGenerator, cast, List, Optional, Union
 
-from .http_client import HttpClient
-from .http_client import ResponseWrapper
+from .http_wrapper import HTTPWrapper
 from .models import AudioConfig
 from .models import SynthesizeSpeechResponse
 from .models import TTSLanguageCodes
@@ -16,7 +15,7 @@ class TTS:
 
     def __init__(
         self,
-        client: HttpClient,
+        client: HTTPWrapper,
         audioConfig: Optional[AudioConfig] = None,
         languageCode: Optional[Union[TTSLanguageCodes, str]] = None,
         modelId: Optional[Union[TTSModelIds, str]] = None,
@@ -122,28 +121,16 @@ class TTS:
         if modelId or self.__modelId:
             data["modelId"] = modelId or self.__modelId
 
-        response: Optional[ResponseWrapper] = None
-        try:
-            response = cast(
-                ResponseWrapper,
-                await self.__client.request(
-                    "post",
-                    "/tts/v1alpha/text:synthesize",
-                    data=data,
-                    stream=True,
-                ),
-            )
-
-            async for chunk in response.content:
+        async with self.__client.stream(
+            "post",
+            "/tts/v1alpha/text:synthesize",
+            data=data,
+        ) as response:
+            async for chunk in response.aiter_lines():
                 if chunk:
                     chunk_data = json.loads(chunk)
                     if isinstance(chunk_data, dict) and chunk_data.get("result"):
                         yield cast(SynthesizeSpeechResponse, chunk_data["result"])
-        except Exception:
-            raise
-        finally:
-            if response:
-                await response.close()
 
     async def voices(
         self,
