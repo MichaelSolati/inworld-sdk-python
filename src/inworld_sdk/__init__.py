@@ -2,8 +2,6 @@
 Inworld SDK - A Python SDK for Inworld
 """
 
-__version__ = "0.3.0"
-
 from typing import Literal, Optional
 
 from .http_client import HttpClient
