@@ -9,6 +9,8 @@ TTSAudioEncoding = Literal[
 
 TTSLanguageCodes = Literal["en-US", "ja-JP", "ko-KR", "zh-CN"]
 
+TTSModelIds = Literal["v2", "v3"]
+
 TTSVoices = Literal[
     "Agnes",
     "Alex",
@@ -105,9 +107,16 @@ class AudioConfig(TypedDict):
 
 
 class VoiceResponseMetadata(TypedDict):
-    gender: str
-    age: str
-    accent: str
+    gender: Literal["VOICE_GENDER_UNSPECIFIED", "MALE", "FEMALE", "NEUTRAL"]
+    age: Literal["VOICE_AGE_UNSPECIFIED", "CHILD", "TEEN", "ADULT", "SENIOR"]
+    accent: Literal[
+        "ACCENT_UNSPECIFIED",
+        "ACCENT_BRITISH",
+        "ACCENT_RUSSIAN",
+        "ACCENT_AUSTRALIAN",
+        "ACCENT_GERMAN",
+        "ACCENT_FRENCH",
+    ]
 
 
 class VoiceResponse(TypedDict):
@@ -115,3 +124,20 @@ class VoiceResponse(TypedDict):
     name: TTSVoices
     voiceMetadata: VoiceResponseMetadata
     naturalSampleRateHertz: int
+
+
+class SynthesizeSpeechUsage(TypedDict):
+    numProcessedCharacters: int
+    modelId: TTSModelIds
+
+
+class SynthesizeSpeechPhonemeTimingInfo(TypedDict):
+    phoneme: str
+    startTime: str
+
+
+class SynthesizeSpeechResponse(TypedDict):
+    audioContent: str
+    numProcessedCharacters: int
+    phonemeTimingInfo: Optional[SynthesizeSpeechPhonemeTimingInfo]
+    usage: SynthesizeSpeechUsage

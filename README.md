@@ -1,10 +1,10 @@
 # inworld-sdk
 
-A Python SDK for interacting with [Inworld AI's platform](https://docs.inworld.ai/docs/intro).
+A Python SDK for interacting with [Inworld's platform](https://docs.inworld.ai/docs/intro).
 
 ## Description
 
-This SDK provides a Python interface for working with Inworld AI's services, making it easy to integrate AI characters into your applications.
+This SDK provides a Python interface for working with Inworld's services, making it easy to integrate AI characters into your applications.
 
 Currently, this SDK only supports the TTS API.
 
@@ -35,6 +35,8 @@ pip install -e ".[dev]"
 
 ```python
 import asyncio
+import base64
+import io
 
 import simpleaudio as sa
 
@@ -50,9 +52,12 @@ async def main():
   print(voices)
 
   # Example: Synthesize and play speech
-  text = "Hello! This is a test of the Inworld AI TTS system."
-  sync_buffer = await client.tts.synthesizeSpeechAsWav(text)
-  play_obj = sa.WaveObject.from_wave_file(sync_buffer)
+  text = "Hello! This is a test of the Inworld TTS system."
+  synthesizedSpeech = await client.tts.synthesizeSpeech(text)
+  audio_content = synthesizedSpeech.get("audioContent")
+  decoded_audio = base64.b64decode(audio_content)
+  wav_file = io.BytesIO(decoded_audio)
+  play_obj = sa.WaveObject.from_wave_file(wav_file)
   play_obj.play().wait_done()
 
 

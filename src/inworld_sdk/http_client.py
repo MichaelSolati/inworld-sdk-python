@@ -72,20 +72,8 @@ class HttpClient:
             wrapped_response = ResponseWrapper(response, session)
 
             if stream:
-                original_content = response.content
-
-                async def validating_stream():
-                    async for chunk in original_content:
-                        if chunk:
-                            try:
-                                yield await self.__validate(chunk)
-                            except Exception:
-                                raise
-
-                response.content = validating_stream()
                 return wrapped_response
             else:
-                await self.__validate(wrapped_response)
                 return_item: dict = await wrapped_response.json()
                 await wrapped_response.close()
                 return return_item
@@ -93,20 +81,3 @@ class HttpClient:
         except Exception:
             await session.close()
             raise
-
-    async def __validate(
-        self,
-        response: Union[ResponseWrapper, bytes],
-    ) -> Union[ResponseWrapper, bytes]:
-        try:
-            if isinstance(response, bytes):
-                body = json.loads(response)
-            else:
-                body = await response.json()
-            if body.get("error") is not None:
-                body = body["error"]
-            if isinstance(body, dict) and body.get("code") is not None:
-                raise Exception(body.get("message"))
-        except Exception:
-            raise
-        return response

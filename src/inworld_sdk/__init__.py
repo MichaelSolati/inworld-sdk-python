@@ -1,5 +1,5 @@
 """
-Inworld AI SDK - A Python SDK for Inworld AI
+Inworld SDK - A Python SDK for Inworld
 """
 
 __version__ = "0.3.0"
@@ -7,16 +7,17 @@ __version__ = "0.3.0"
 from typing import Literal, Optional
 
 from .http_client import HttpClient
+from .models import TTSAudioEncoding
+from .models import TTSLanguageCodes
+from .models import TTSModelIds
+from .models import TTSVoices
 from .tts import TTS
-from .typings.tts import TTSAudioEncoding
-from .typings.tts import TTSLanguageCodes
-from .typings.tts import TTSVoices
 
-__all__ = ["InworldClient", "TTSAudioEncoding", "TTSLanguageCodes", "TTSVoices"]
+__all__ = ["InworldClient", "TTSAudioEncoding", "TTSLanguageCodes", "TTSModelIds", "TTSVoices"]
 
 
 class InworldClient:
-    """Client for interacting with Inworld AI's services."""
+    """Client for interacting with Inworld's services."""
 
     def __init__(
         self,
@@ -25,12 +26,12 @@ class InworldClient:
         base_url: Optional[str] = None,
     ):
         """
-        Initialize the Inworld AI client.
+        Initialize the Inworld client.
 
         Args:
-            api_key: Your Inworld AI API key
+            api_key: Your Inworld API key
             auth_type: Optional authentication type, defaults to "basic"
-            base_url: Optional custom base URL for the API, defaults to https://api.inworld.ai/v1
+            base_url: Optional custom base URL for the API, defaults to https://api.inworld.ai/
         """
         client = HttpClient(api_key, auth_type, base_url)
         self.__tts = TTS(client)
