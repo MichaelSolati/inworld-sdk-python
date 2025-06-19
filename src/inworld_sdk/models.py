@@ -1,5 +1,18 @@
 from typing import Literal, Optional, TypedDict
 
+__all__ = [
+    "AudioConfig",
+    "SynthesizeSpeechResponse",
+    "SynthesizeSpeechUsage",
+    "SynthesizeSpeechPhonemeTimingInfo",
+    "TTSAudioEncoding",
+    "TTSLanguageCodes",
+    "TTSModelIds",
+    "TTSVoices",
+    "VoiceResponse",
+    "VoiceResponseMetadata",
+]
+
 TTSAudioEncoding = Literal[
     "AUDIO_ENCODING_UNSPECIFIED",
     "LINEAR16",
@@ -126,14 +139,14 @@ class VoiceResponse(TypedDict):
     naturalSampleRateHertz: int
 
 
-class SynthesizeSpeechUsage(TypedDict):
-    numProcessedCharacters: int
-    modelId: TTSModelIds
-
-
 class SynthesizeSpeechPhonemeTimingInfo(TypedDict):
     phoneme: str
     startTime: str
+
+
+class SynthesizeSpeechUsage(TypedDict):
+    numProcessedCharacters: int
+    modelId: TTSModelIds
 
 
 class SynthesizeSpeechResponse(TypedDict):
